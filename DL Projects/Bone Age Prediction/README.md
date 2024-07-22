@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="https://github.com/user-attachments/assets/92edc8f6-2172-487e-bbe3-b2dd8b893107" alt="boneage1">
+  <img src="https://github.com/user-attachments/assets/e7867f37-8e99-4fe5-b1c2-82786ac13368" alt="boneage">
 </div>
 
 
