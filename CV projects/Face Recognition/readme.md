@@ -1,5 +1,5 @@
 ![FaceRecognition](https://github.com/user-attachments/assets/dbbcca59-a78e-469b-8695-e6610d26b4f0)
-# Face Recognition
+# A user-friendly web interface Face Recognition
 
 This project focuses on building a face recognition model. Accurate identification of these faces is essential for professional networking websites, media applications, and business intelligence platforms. The project includes steps for data collection, preprocessing, model training, and deployment, along with a user-friendly web interface for image uploads and face recognition.
 
@@ -14,21 +14,11 @@ This project focuses on building a face recognition model. Accurate identificati
 - **Normalization**: Normalized image pixel values to improve model performance.
 
 ### 3. Data Augmentation
-- **Techniques Used**: Applied augmentation techniques such as rotation, flipping, and zooming to increase the diversity of the training data.
-- **Implementation**: Used the Keras `ImageDataGenerator` for augmentation.
-
-### 4. Model Building
-- **Architecture**: Constructed a Convolutional Neural Network (CNN) using Keras.
-- **Layers**: Included convolutional layers, pooling layers, and dense layers for feature extraction and classification.
-
-### 5. Model Compilation
-- **Optimizer**: Used the Adam optimizer for training the model.
-- **Loss Function**: Employed categorical cross-entropy as the loss function.
-- **Metrics**: Monitored accuracy as the performance metric.
+- **Techniques Used**: Applied augmentation techniques such as rotation and flipping to increase the diversity of the training data.
 
 ### 6. Model Training
-- **Training Process**: Trained the model using the augmented training data.
-- **Validation**: Evaluated the model's performance on a validation dataset.
+- **Training Process**: Trained the model using the augmented training data on 3 different models.
+- **Validation**: Evaluated the model's performance on a test dataset.
 
 ### 7. Model Evaluation
 - **Metrics**: Assessed the model using accuracy, precision, recall, and F1-score.
@@ -41,3 +31,5 @@ This project focuses on building a face recognition model. Accurate identificati
 ### 9. Model Prediction
 - **New Data**: Used the trained model to make predictions on new, unseen images.
 - **Visualization**: Displayed the predictions alongside the actual images.
+
+  Finally, the selected model is used to create a user friendly web inference to make predictions.
