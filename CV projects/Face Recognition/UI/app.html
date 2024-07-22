@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Celebrity Classifier</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.0/css/bootstrap.min.css">
+    <link rel="stylesheet" href="./dropzone.min.css">
+    <link rel="stylesheet" href="./app.css">
+    <style>
+        .small-font {
+            font-size: smaller;
+        }
+
+        .card-wrapper {
+            margin: 5% 0;
+        }
+
+        .custom-circle-image {
+            width: 10vw;
+            height: 10vw;
+        }
+
+            .custom-circle-image img {
+                object-fit: cover;
+            }
+
+        .card-title {
+            letter-spacing: 1.1px;
+        }
+
+        .card-text {
+            font-family: MerriweatherRegular;
+            font-size: 22px;
+            line-height: initial;
+        }
+
+        .dropzone {
+            border-style: dashed;
+        }
+
+        .error {
+            font-family: MerriweatherRegular;
+            font-size: 30px;
+            line-height: initial;
+            color: blue;
+            text-align: center;
+        }
+
+        #classTable {
+            font-family: "Trebuchet MS", Arial, Helvetica, sans-serif;
+            border-collapse: collapse;
+            width: 100%;
+        }
+
+            #classTable td,
+            #classTable th {
+                border: 1px solid #ddd;
+                padding: 8px;
+            }
+
+            #classTable th {
+                padding-top: 12px;
+                padding-bottom: 12px;
+                text-align: left;
+                background-color: #4CAF50;
+                color: white;
+            }
+    </style>
+</head>
+
+<body>
+    <nav class="navbar navbar-light bg-light justify-content-center">
+        <a class="navbar-brand" href="#">Image Classifier</a>
+    </nav>
+
+    <div class="container">
+        <div class="row">
+            <div class="col card-wrapper" data-player="elon_musk">
+                <div class="card border-0">
+                    <div class="position-relative rounded-circle overflow-hidden mx-auto custom-circle-image">
+                        <img class="w-100 h-100" src="./images/elon_mask.jpg" alt="Elon Musk">
+                    </div>
+                    <div class="card-body text-center mt-4">
+                        <h4 class="text-uppercase card-title">Elon Musk</h4>
+                    </div>
+                </div>
+            </div>
+            <div class="col card-wrapper" data-player="jeff_bezos">
+                <div class="card border-0">
+                    <div class="position-relative rounded-circle overflow-hidden mx-auto custom-circle-image">
+                        <img class="w-100 h-100" src="./images/jeff_bezos.jpg" alt="Jeff Bezos">
+                    </div>
+                    <div class="card-body text-center mt-4">
+                        <h4 class="text-uppercase card-title">Jeff Bezos</h4>
+                    </div>
+                </div>
+            </div>
+            <div class="col card-wrapper" data-player="mark_zuckerberg">
+                <div class="card border-0">
+                    <div class="position-relative rounded-circle overflow-hidden mx-auto custom-circle-image">
+                        <img class="w-100 h-100" src="./images/mark_zuckerberg.jpg" alt="Mark Zuckerberg">
+                    </div>
+                    <div class="card-body text-center mt-4">
+                        <h4 class="text-uppercase card-title">Mark Zuckerberg</h4>
+                    </div>
+                </div>
+            </div>
+            <div class="col card-wrapper" data-player="maryam_mirzakhani">
+                <div class="card border-0">
+                    <div class="position-relative rounded-circle overflow-hidden mx-auto custom-circle-image">
+                        <img class="w-100 h-100" src="./images/maryam_mirzakhani.jpg" alt="Maryam Mirzakhani">
+                    </div>
+                    <div class="card-body text-center mt-4">
+                        <h4 class="text-uppercase card-title">Maryam Mirzakhani</h4>
+                    </div>
+                </div>
+            </div>
+            <div class="col card-wrapper" data-player="tim_cook">
+                <div class="card border-0">
+                    <div class="position-relative rounded-circle overflow-hidden mx-auto custom-circle-image">
+                        <img class="w-100 h-100" src="./images/tim_cook.png" alt="Tim Cook">
+                    </div>
+                    <div class="card-body text-center mt-4">
+                        <h4 class="text-uppercase card-title">Tim Cook</h4>
+                    </div>
+                </div>
+            </div>
+            <div class="col card-wrapper" data-player="warren_buffett">
+                <div class="card border-0">
+                    <div class="position-relative rounded-circle overflow-hidden mx-auto custom-circle-image">
+                        <img class="w-100 h-100" src="./images/warren_buffett.jpg" alt="Warren Buffett">
+                    </div>
+                    <div class="card-body text-center mt-4">
+                        <h4 class="text-uppercase card-title">Warren Buffett</h4>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-sm-4">
+                <div class="row">
+                    <div class="col-12 mx-auto">
+                        <form action="/file-upload" class="dropzone" id="dropzone">
+                            <div class="dz-message needsclick">
+                                <img src="./images/upload.png" width="50vw" height="50vw"><br>
+                                <span class="note needsclick">Drop files here or click to upload</span>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+                <div class="row mt-3">
+                    <div class="col-3 mx-auto">
+                        <button id="submitBtn" type="button" class="btn btn-success">Classify</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-sm-8 error" id="error">
+                <p>Can't classify image. Classifier was not able to detect face and two eyes properly</p>
+            </div>
+
+            <div class="col-sm-4" id="resultHolder">
+            </div>
+            <div class="col-sm-4" id="divClassTable">
+                <table id="classTable">
+                    <tr>
+                        <th>Celebrity</th>
+                        <th>Probability Score</th>
+                    </tr>
+                    <tr>
+                        <td class="small-font">Elon Musk</td>
+                        <td id="score_elon_musk"></td>
+                    </tr>
+                    <tr>
+                        <td class="small-font">Jeff Bezos</td>
+                        <td id="score_jeff_bezos"></td>
+                    </tr>
+                    <tr>
+                        <td class="small-font">Mark Zuckerberg</td>
+                        <td id="score_mark_zuckerberg"></td>
+                    </tr>
+                    <tr>
+                        <td class="small-font">Maryam Mirzakhani</td>
+                        <td id="score_maryam_mirzakhani"></td>
+                    </tr>
+                    <tr>
+                        <td class="small-font">Tim Cook</td>
+                        <td id="score_tim_cook"></td>
+                    </tr>
+                    <tr>
+                        <td class="small-font">Warren Buffett</td>
+                        <td id="score_warren_buffett"></td>
+                    </tr>
+                </table>
+            </div>
+
+        </div>
+
+    </div>
+
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.0/js/bootstrap.min.js"></script>
+    <script src="./dropzone.min.js"></script>
+    <script src="./app.js"></script>
+</body>
+
+</html>

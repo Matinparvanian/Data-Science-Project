@@ -1,0 +1,693 @@
+---
+title: |
+   | ![]("C:\Users\matin\Desktop\R.png")
+   |
+   |
+   |
+   | UNIVERSITÀ DEGLI STUDI DI PADOVA
+   | Dipartimento di Matematica
+   |
+   |
+   |
+   | “Breast Cancer Prediction”
+   | An Analysis of Classification Models
+   | 
+   |
+   |
+author: |
+ | Mohammad Matin Parvanian
+ |
+ |
+ | July 2023
+toc: true
+font: 12pt
+output:
+  pdf_document: default
+  word_document: default
+  html_document: default
+---
+
+\vspace*{10cm}
+# 1 INTRODUCTION
+
+\vspace*{1cm}
+
+Breast cancer is a significant health concern that affects many individuals globally. Early detection and accurate prediction of breast cancer can greatly improve patient outcomes and survival rates. Statistical learning techniques have shown promise in predicting and diagnosing breast cancer using various clinical and imaging features.
+
+\vspace*{0.5cm}
+
+In this paper, I aim to conduct a systematic analysis of several classification models for breast cancer prediction, including, logistic regression, LDA, QDA, Naive Bayes,and KNN, can be used to build predictive models.I evaluate the performance of these models on the available dataset, using various performance metrics and feature selection techniques. Additionally, I provide insights into the most informative features of breast cancer prediction.
+
+\vspace*{1cm}
+
+# 2 PREPRATION OF THE DATASET
+
+
+### 2.1 Data Collection
+Breast cancer is the most common cancer amongst women in the world(https://www.kaggle.com/datasets/utkarshx27/breast-cancer-wisconsin-diagnostic-dataset). It accounts for 25% of all cancer cases, and affected over 2.1 Million people in 2015 alone. It starts when cells in the breast begin to grow out of control. These cells usually form tumors that can be seen via X-ray or felt as lumps in the breast area.
+The key challenges against it’s detection is how to classify tumors into malignant (cancerous) or benign(non cancerous).
+This dataset is consist of 569 females.
+Features were computationally extracted from digital images of fine needle aspirate biopsy slides. Features correspond to properties of cell nuclei, such as size, shape and regularity. The mean, standard error, and worst value of each of 10 nuclear parameters is reported for a total of 30 features.
+
+\vspace*{0.025cm}
+
+Let's import the necessary libraries.
+```{r}
+options(warn = -1)
+library(ggplot2, logical.return = FALSE , warn.conflicts = FALSE)
+library(reshape2, logical.return = FALSE , warn.conflicts = FALSE)
+library(MASS, logical.return = FALSE , warn.conflicts = FALSE)
+library(e1071, logical.return = FALSE , warn.conflicts = FALSE)
+library(class, logical.return = FALSE , warn.conflicts = FALSE) 
+library(knitr)
+library(kableExtra)
+library(gridExtra, logical.return = FALSE , warn.conflicts = FALSE)
+library(dplyr, logical.return = FALSE , warn.conflicts = FALSE)
+library(glmnet, logical.return = FALSE , warn.conflicts = FALSE)
+library(pROC, logical.return = FALSE , warn.conflicts = FALSE)
+library(car, logical.return = FALSE , warn.conflicts = FALSE)
+```
+
+Let's import the dataset. You can see that we have 32 variables with 30 continuous variables and 1 output which indicates if 
+the cancer is malignant or benign.
+```{r}
+setwd("E:\\2023-2024A\\Statistical Learning\\data")
+Cancer = read.csv("breast-cancer.csv")
+attach(Cancer)
+str(Cancer)
+dim(Cancer) 
+```
+
+Some useful information about features:
+
+* radius. Nucleus radius (mean of distances from center to points on perimeter).
+* texture. Nucleus texture (standard deviation of grayscale values).
+* perimeter. Nucleus perimeter.
+* area. Nucleus area.
+* smoothness. Nucleus smoothness (local variation in radius lengths).
+* compactness. Nucleus compactness (perimeter^2/area - 1).
+* concavity, Nucleus concavity (severity of concave portions of the contour).
+* concave_pts. Number of concave portions of the nucleus contour.
+* symmetry. Nucleus symmetry.
+* fractal_dim. Nucleus fractal dimension ("coastline approximation" -1).
+
+
+\vspace*{2cm}
+### 2.2 Preprocessing 
+
+There is no missing values in the dataset.
+```{r}
+sum(is.na(Cancer))
+missing_counts = data.frame(
+  Variable = names(Cancer),
+  Count = colSums(!is.na(Cancer)),
+  Percentage = colMeans(!is.na(Cancer)) * 100
+)
+
+ggplot(missing_counts, aes(x = Variable, y = Count)) +
+  geom_bar(stat = "identity", fill = "steelblue") +
+  labs(title = "Number and Percentage of Non-Missing Values",
+       x = "Variable",
+       y = "Count") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+We can remove the column id since it is not necessary to be in the models and results.
+
+```{r}
+Cancer = Cancer[-1]
+```
+
+\vspace*{0.5cm}
+### 2.3 Exploratory and Data Analysis
+Let's check the response variable first. Our response variable is diagnosis. 
+As you can see the response variable is not balanced completely but since the difference among 2 classes is not too much it is not going to make any major problem.
+
+```{r}
+Cancer %>%
+  group_by(diagnosis) %>%
+  summarise(n = n()) %>%
+  mutate(Percentage = round(n/sum(n)*100, 1)) %>%
+  ggplot(aes(x="", y=n, fill = factor(diagnosis))) +
+  geom_bar(width = 1, color = "white", alpha = 0.5, stat = "identity") +
+  coord_polar("y", start=0) +
+  labs(fill = "diagnosis", x = "", y = "") +
+  theme_void() +
+  geom_text(aes(y = n/1.3, label = paste0(Percentage, "%")), color = "white", size = 4) +
+  scale_fill_manual(values = c('lightskyblue', 'gold'), labels = c("benign", "malignant"))
+```
+
+\vspace*{2cm}
+```{r}
+
+Cancer %>%
+  group_by(diagnosis) %>%
+  summarise(n = n()) %>%
+  mutate(number = n) %>%
+  ggplot(aes(x = factor(diagnosis), y = n, fill = factor(diagnosis))) +
+  geom_bar(stat = "identity", color = "white", alpha = 0.5) +
+  labs(x = "Count", y = "", fill = "diagnosis") +
+  theme_minimal() +
+  theme(legend.position = "bottom") +
+  geom_text(aes(label = paste0(number)), position = position_stack(vjust = 0.5), 
+            color = "black", size = 4) +
+  scale_fill_manual(values=c('lightskyblue', 'gold'),labels = c("benign", "malignant"))+
+  coord_flip()
+```
+
+Now, let's check the plot of other features.
+From the plot below, you can see that for all the available features the mean of variables for malignant observes
+is greater than benign. so we can say that these variables are effective in being malignant or benign.
+
+\vspace*{1cm}
+```{r}
+variables = names(Cancer)[2:11] 
+plots = list() 
+for (i in 1:length(variables)) {
+  variable = variables[i]
+  
+  p = ggplot(Cancer, aes(x = .data[[variable]], fill = factor(diagnosis))) +
+    geom_density(alpha = 0.5) +
+    scale_fill_manual(values = c("lightskyblue", "gold"), name = "diagnosis") +
+    labs(x = variable) +
+    theme_classic()
+  
+  plots[[i]] = p  
+}
+grid.arrange(grobs = plots, ncol = 2)
+```
+\vspace*{1cm}
+
+From the plot below, you can see that for most of the available features the standard error of variables for malignant observes
+is greater than benign except smoothness_se and symmetry_se where for smoothness_se the number of malignant cases is greater than benign, and for symmetry_se we can see that the standard error of symmetry of benign is greater than malignant cases. so we can say that these variables are effective in being malignant or benign.
+
+```{r}
+variables = names(Cancer)[12:21] 
+plots = list() 
+for (i in 1:length(variables)) {
+  variable <- variables[i]
+  
+  p = ggplot(Cancer, aes(x = .data[[variable]], fill = factor(diagnosis))) +
+    geom_density(alpha = 0.5) +
+    scale_fill_manual(values = c("lightskyblue", "gold"), name = "diagnosis") +
+    labs(x = variable) +
+    theme_classic()
+  
+  plots[[i]] = p  
+}
+grid.arrange(grobs = plots, ncol = 2)
+```
+\vspace*{1cm}
+
+From the plot below, you can see that for all the available features the worst value of variables for malignant observes
+is greater than benign.
+\vspace*{0.5cm}
+```{r}
+variables = names(Cancer)[22:31] 
+plots = list() 
+for (i in 1:length(variables)) {
+  variable <- variables[i]
+  
+  p = ggplot(Cancer, aes(x = .data[[variable]], fill = factor(diagnosis))) +
+    geom_density(alpha = 0.5) +
+    scale_fill_manual(values = c("lightskyblue", "gold"), name = "diagnosis") +
+    labs(x = variable) +
+    theme_classic()
+  
+  plots[[i]] = p  
+}
+grid.arrange(grobs = plots, ncol = 2)
+```
+
+In In the next part, you can see the boxplot of all variables with respect to the response variable. in order to have a good view 
+I normalized all features to have the same scale. Moreover, linearly scaling the features is useful for some models especially for KNN since KNN is very sensitive to scales of features.
+
+```{r}
+Cancer_normalized = Cancer
+Cancer_normalized[names(Cancer)[-1]] = scale(Cancer_normalized[names(Cancer)[-1]])
+head(Cancer_normalized)
+```
+\vspace*{0.5cm}
+From the plot below, you can see that the results from previous plots are still extractable from this plot. for most of the variables, the value of malignant cases is greater than benign. there exist some outliers but I don't take any action for them since I fitted my models with outliers and without these outliers and the results are better when I don't remove them or use some strategies like IQR.
+
+```{r}
+data_melted = melt(Cancer_normalized, id.vars = "diagnosis", 
+                   variable.name = "features", value.name = "value")
+
+# Create the boxplot
+ggplot(data_melted, aes(x = features, y = value, fill = diagnosis)) +
+  geom_boxplot() +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
+  labs(x = "features", y = "value") +
+  guides(fill = guide_legend(title = "diagnosis"))
+```
+
+\vspace*{0.5cm}
+Now, since our response variable is not numeric I need to change it to a numeric variable. You can see that the diagnosis variable classes are changed to 0 and 1.
+```{r}
+Cancer$diagnosis[Cancer$diagnosis=='M']=1
+Cancer$diagnosis[Cancer$diagnosis=='B']=0
+attach(Cancer)
+table(diagnosis)
+```
+
+\vspace*{0.5cm}
+# 3 MODELS
+In this section, we will fit our models to the breast cancer dataset. As mentioned earlier, we will consider five different algorithms: Logistic Regression, K-Nearest Neighbors (KNN), Naive Bayes, Linear Discriminant Analysis (LDA), and Quadratic Discriminant Analysis (QDA). For each model, we will explore different scenarios by applying feature selection methods. Our goal is to identify the best model that is most suitable for our dataset.
+
+Before going through the details of our models there exist some important points that we need to discuss.
+
+Firstly, as we are dealing with a classification problem, each model is accompanied by a confusion matrix. The confusion matrix consists of four different values. Firstly, we have the true positive, which represents the number of instances correctly predicted as having cancer. Secondly, we have the false positive, which indicates the number of instances predicted as having cancer but actually being non cancerous. The third value is the false negative, which signifies the instances that have cancer but are predicted as non cancerous. Lastly, we have the true negative, which represents the number of instances correctly predicted as non cancerous.
+
+Secondly, while it is important to prioritize higher true positives, higher true negatives, and lower false positives, the most crucial aspect for us is minimizing the false negative rate. You may wonder why. In the context of medical diagnosis, a false negative implies that the model fails to identify individuals who actually have cancer. The consequences of false negatives can be severe, as it could result in delayed or missed treatment, leading to potential health risks and complications for individuals requiring medical attention. Missing cases of cancer can have long-term health implications.
+
+Regarding false positives, while they can lead to unnecessary follow-up tests or treatments, they are generally less severe compared to false negatives. In the case of cancer, a false positive may result in additional medical evaluations or interventions, but it typically does not pose the same immediate health risks as missing a true positive case. However, false positives can still cause anxiety, inconvenience, and potential economic costs associated with unnecessary medical procedures or treatments.
+
+Considering the potential health risks and consequences associated with missing cases of cancer, minimizing false negatives (FN) is typically of higher importance in this situation. The primary goal is to ensure that individuals with cancer are correctly identified and receive the necessary care and management.
+
+All in all, the relative importance of false negatives and false positives may vary based on specific circumstances, such as the prevalence of cancer in the population, the availability of follow-up confirmatory tests, the cost of those tests, and the potential impact of false positives on individuals' well-being. It is important to assess the specific context and consider the trade-offs between false negatives and false positives to determine the optimal approach for diabetes classification.
+
+### 3.1 Logistic Regression 
+Let's fit our Logistic Regression model with all of our independent variables. 
+We considered 80% of our data as the training dataset, and the remaining data as the test dataset. I considered 4 different thresholds 
+0.3, 0.4, 0.5, 0.6 but the result is the same for all the available metrics. In order to prevent overlapping I defined a function that contains information about the metrics and confusion matrix. The logistic regression has obtained good results. 
+
+```{r}
+Cancer$diagnosis = as.numeric(as.character(Cancer$diagnosis))
+set.seed(123)
+test_index = sample(nrow(Cancer), 0.2 * nrow(Cancer))
+train = Cancer[-test_index, ]
+test = Cancer[test_index, ]
+
+
+model = glm(diagnosis ~ ., data = train, family = "binomial")
+
+
+calculate_metrics = function(predictions, actual) {
+  confusion_matrix = table(predictions, actual)
+  true_positive = confusion_matrix[2, 2]
+  false_positive = confusion_matrix[1, 2]
+  false_negative = confusion_matrix[2, 1]
+  true_negative = confusion_matrix[1, 1]
+  
+  recall = true_positive / (true_positive + false_negative)
+  precision = true_positive / (true_positive + false_positive)
+  f1_score = 2 * precision * recall / (precision + recall)
+  accuracy = (true_positive + true_negative) / sum(confusion_matrix)
+  
+  return(data.frame(
+    Metric = c("Recall", "Precision", "F1 Score", "Accuracy"),
+    Value = c(recall, precision, f1_score, accuracy)
+  ))
+}
+
+thresholds = c(0.3, 0.4, 0.5, 0.6)
+results_train = data.frame()
+results_test = data.frame()
+
+for (threshold in thresholds) {
+ 
+  pred_class_train = ifelse(predict(model, newdata = train, type = "response") > 
+                              threshold, 1, 0)
+  results_train_threshold = calculate_metrics(pred_class_train, train$diagnosis)
+  results_train_threshold$Set = "Train"
+  results_train_threshold$Threshold = threshold
+  results_train = rbind(results_train, results_train_threshold)
+  
+
+  pred_class_test = ifelse(predict(model, newdata = test, type = "response") > 
+                             threshold, 1, 0)
+  results_test_threshold = calculate_metrics(pred_class_test, test$diagnosis)
+  results_test_threshold$Set = "Test"
+  results_test_threshold$Threshold = threshold
+  results_test = rbind(results_test, results_test_threshold)
+}
+
+
+print(results_train)
+print(results_test)
+```
+
+you can see the confusion matrix of the logistic regression. As you can see among all the cases in the test set we have 6 cases recognized as false negatives which are the ones that had malignant breast cancer but the model was unable to predict them correctly.
+```{r}
+table(pred_class_test, test$diagnosis)
+```
+
+Below, you can see the ROC curve related to logistic regression which has a good value of AUC. The AUC values indicate the overall performance of each model in terms of their ability to discriminate between positive and negative instances. A higher AUC suggests better predictive performance and a greater ability to correctly classify instances. Therefore, based on the AUC values, the logistic regression model appears to have the best performance among the three models in terms of its ability to distinguish between the classes.
+
+```{r}
+roc_obj = roc(test$diagnosis,pred_class_test)
+plot(roc_obj, main = "ROC Curve", print.auc = TRUE,lty = 2 , col = 'gold')
+```
+
+\vspace*{0.5cm}
+### 3.2 Backward Feature selection
+
+In this section, I applied backward feature selection in order to find the best features which can make better predictions.As you can see the backward feature selection has choosed fractal_dimension_mean, texture_se, symmetry_worst, radius_se, compactness_mean, smoothness_se, perimeter_worst, smoothness_worst,  concave.points_mean, and texture_mean as preferred features. 
+
+```{r}
+
+backward_model = step(model, direction = "backward")
+
+backward_pred_class_train = ifelse(predict(backward_model, 
+                                      newdata = train, type = "response") > 0.5, 1, 0)
+backward_results_train = calculate_metrics(backward_pred_class_train, train$diagnosis)
+backward_results_train$Set = "Train"
+
+  
+backward_pred_class_test = ifelse(predict(backward_model, 
+                                     newdata = test, type = "response") > 0.5, 1, 0)
+backward_results_test = calculate_metrics(backward_pred_class_test, test$diagnosis)
+backward_results_test$Set = "Test"
+
+
+
+
+print(backward_results_train)
+print(backward_results_test)
+```
+
+In this model the number of false negatives are 4 which is lower than logistic regression with all features.
+```{r}
+table(backward_pred_class_test, test$diagnosis)
+```
+
+You can see the ROC curve of this model.
+```{r}
+roc_obj = roc(test$diagnosis, backward_pred_class_test)
+plot(roc_obj, main = "ROC Curve", print.auc = TRUE,lty = 2 , col = 'gold')
+```
+
+\vspace*{0.5cm}
+### 3.3 Ridge regression with cross validation
+
+In this part, I used logistic regression for the regularization in order to prevent over-fitting which means increasing the error of training and reducing the generalization error. As you can see this model performed such an incredible model where the value of false negatives is zero so the value of recall is 1.Moreover, the model has a good value of accuracy, precision and F1-score. So the model has a highly good performance.
+
+```{r}
+x_train = model.matrix(diagnosis ~ ., data = train)[,-1]
+y_train = train$diagnosis
+
+x_test = model.matrix(diagnosis ~ ., data = test)[,-1]
+y_test = test$diagnosis
+
+cv_model = cv.glmnet(x_train, y_train, family = "binomial", alpha = 0)
+
+best_lambda = cv_model$lambda.min
+
+
+ridge_model = glmnet(x_train, y_train, family = "binomial", alpha = 0, 
+                     lambda = best_lambda)
+
+
+
+ridge_pred_class_train = ifelse(predict(ridge_model, newx = x_train, type = "response")
+                                > 0.5, 1, 0)
+ridge_results_train = calculate_metrics(ridge_pred_class_train, y_train)
+ridge_results_train$Set = "Train"
+
+
+ridge_pred_class_test = ifelse(predict(ridge_model, newx = x_test, type = "response")
+                               > 0.5, 1, 0)
+ridge_results_test = calculate_metrics(ridge_pred_class_test, y_test)
+ridge_results_test$Set = "Test"
+
+print(ridge_results_train)
+print(ridge_results_test)
+```
+
+Below, you can see the best value of hyperparameter lambda and the confusion matrix of the model. As you can see the model has significantly improved in comparison to the two previous models.
+```{r}
+best_lambda
+table(ridge_pred_class_test, y_test)
+```
+
+Now let's see which features have been chosen by this model.
+```{r}
+coef(ridge_model)
+```
+
+The ROC curve for the ridge is shown below.
+```{r}
+roc_obj = roc(test$diagnosis,ridge_pred_class_test)
+plot(roc_obj, main = "ROC Curve", print.auc = TRUE,lty = 2 , col = 'gold')
+```
+
+\vspace*{0.5cm}
+### 3.4 LASSO regression with cross validation
+The lasso regression model is fitted below with cross validation in order to find the best hyperparameter.
+```{r}
+cv_model = cv.glmnet(x_train, y_train, family = "binomial", alpha = 1)
+best_lambda = cv_model$lambda.min
+
+lasso_model = glmnet(x_train, y_train, family = "binomial", alpha = 1, 
+                     lambda = best_lambda)
+lasso_pred_class_train = ifelse(predict(ridge_model, newx = x_train, type = "response")
+                                > 0.5, 1, 0)
+lasso_results_train = calculate_metrics(ridge_pred_class_train, y_train)
+lasso_results_train$Set = "Train"
+
+
+lasso_pred_class_test = ifelse(predict(lasso_model, newx = x_test,
+                                       type = "response")> 0.5, 1, 0)
+
+lasso_results_test = calculate_metrics(lasso_pred_class_test, y_test)
+lasso_results_test$Set = "Test"
+
+
+print(lasso_results_train)
+print(lasso_results_test)
+```
+
+I have found the best hyperparameter and you can see the confusion matrix of the model. This model has performed very well and could obtain good metrics values.  
+```{r}
+best_lambda
+table(lasso_pred_class_test, y_test)
+```
+
+Now let's see which coefficients has been chosen by this model. The chosen features are concave.points_mean, radius_se, smoothness_se, compactness_se,
+fractal_dimension_se, texture_worst, area_worst, smoothness_worst, concavity_worst, concave.points_worst, and symmetry_worst. 
+```{r}
+coef(lasso_model)
+```
+
+The ROC curve of this model is shown below.
+```{r}
+roc_obj = roc(test$diagnosis,lasso_pred_class_test)
+plot(roc_obj, main = "ROC Curve", print.auc = TRUE,lty = 2 , col = 'gold')
+```
+
+\vspace*{0.5cm}
+### 3.5 LDA 
+
+In this section, I trained the LDA model. As you can see this model could obtain good results but the value of precision if not very good since the number of false positives is higher than in other models. false positives are the one who doesn't have cancer but the model predicted them as cancerous. 
+
+```{r}
+
+LDA_model = lda(diagnosis ~ ., data = train)
+
+LDA_pred_train = predict( LDA_model, newdata = train)$class
+LDA_pred_test = predict( LDA_model, newdata = test)$class
+
+LDA_train_result = calculate_metrics(LDA_pred_train, train$diagnosis)
+LDA_test_result = calculate_metrics(LDA_pred_test, test$diagnosis)
+
+
+print(LDA_train_result)
+print(LDA_test_result)
+```
+
+You can see the confusion matrix below.
+```{r}
+table(LDA_pred_test, y_test)
+```
+
+Now, let's check the ROC curve.
+```{r}
+LDA_pred_prob_test = predict(LDA_model, newdata = test)$posterior[, 1]
+roc_obj = roc(test$diagnosis, LDA_pred_prob_test)
+plot(roc_obj, main = "ROC Curve", print.auc = TRUE, ylim = c(0, 1), lty = 2, col = 'gold')
+```
+
+In the plots below you can see that the LDA model has preformed a good performance for two available classes.
+```{r}
+plot(LDA_model)
+plot(LDA_model, type="density")
+```
+
+\vspace*{0.5cm}
+### 3.6 QDA
+QDA model has preformed well but it has lower results in comparison to LDA model.
+```{r}
+
+QDA_model = qda(diagnosis ~ ., data = train)
+
+QDA_pred_train = predict( QDA_model, newdata = train)$class
+QDA_pred_test = predict( QDA_model, newdata = test)$class
+
+QDA_train_result = calculate_metrics(QDA_pred_train, train$diagnosis)
+QDA_test_result = calculate_metrics(QDA_pred_test, test$diagnosis)
+
+
+print(QDA_train_result)
+print(QDA_test_result)
+```
+
+Below, you can see the confusion matrix and the ROC curve.
+```{r}
+table(QDA_pred_test, y_test)
+```
+
+```{r}
+QDA_pred_prob_test = predict(QDA_model, newdata = test)$posterior[, 1]
+roc_obj = roc(test$diagnosis, QDA_pred_prob_test)
+plot(roc_obj, main = "ROC Curve", print.auc = TRUE,lty = 2 , col = 'gold')
+```
+
+\vspace*{0.5cm}
+### 3.7 Naive Bayes
+In this section, I will train a naive Bayes model. This model has performed a good job too. the value of metrics is pretty good.
+
+```{r}
+nb_model = naiveBayes(diagnosis ~ ., data = train)
+
+nb_pred_train = predict(nb_model, newdata = train, type = 'class')
+nb_pred_test = predict(nb_model, newdata = test , type = 'class')
+
+
+NB_train_result = calculate_metrics(nb_pred_train, train$diagnosis)
+NB_test_result = calculate_metrics(nb_pred_test, test$diagnosis)
+
+print(NB_train_result)
+print(NB_test_result)
+```
+
+You can see the confusion matrix and the ROC curve of the Naive Bayes model.
+```{r}
+table(nb_pred_test, test$diagnosis)
+nb_probs_test = predict(nb_model, newdata = test, type = 'raw')
+```
+
+```{r}
+roc_obj = roc(test$diagnosis, nb_probs_test[,1])
+plot(roc_obj, main = "ROC Curve", print.auc = TRUE,lty = 2 , col = 'gold')
+```
+
+\vspace*{0.5cm}
+### 3.8 KNN
+First, Let's find the best value for K. As you can see the best value of K is 18 where the model has the highest value of metrics. 
+
+```{r}
+k_values = c(2 , 4 , 6 , 8 , 10 , 12 , 14 , 16 , 18 , 20)
+KNN_results = list()
+
+for (k in k_values) {
+  KNN_model = knn(train[, -1], test[, -1], train[, 1], k)
+  KNN_results[[as.character(k)]] = calculate_metrics(KNN_model, test$diagnosis)
+}
+
+for (k in k_values) {
+  cat("Metrics for k =", k, ":\n")
+  print(KNN_results[[as.character(k)]])
+  cat("\n")
+}
+
+
+K = c(2, 4, 6, 8, 10, 12 , 14 , 16 , 18 , 20)
+Accuracy = c(KNN_results$'2'[4,2],
+              KNN_results$'4'[4,2],
+              KNN_results$'6'[4,2],
+              KNN_results$'8'[4,2],
+              KNN_results$'10'[4,2],
+              KNN_results$'12'[4,2],
+              KNN_results$'14'[4,2],
+              KNN_results$'16'[4,2],
+              KNN_results$'18'[4,2],
+              KNN_results$'20'[4,2])
+
+F1_Score = c(KNN_results$'2'[3,2],
+              KNN_results$'4'[3,2],
+              KNN_results$'6'[3,2],
+              KNN_results$'8'[3,2],
+              KNN_results$'10'[3,2],
+              KNN_results$'12'[3,2],
+              KNN_results$'14'[3,2],
+              KNN_results$'16'[3,2],
+              KNN_results$'18'[3,2],
+              KNN_results$'20'[3,2])
+
+Precision = c(KNN_results$'2'[2,2],
+               KNN_results$'4'[2,2],
+               KNN_results$'6'[2,2],
+               KNN_results$'8'[2,2],
+               KNN_results$'10'[2,2],
+               KNN_results$'12'[2,2],
+               KNN_results$'14'[2,2],
+               KNN_results$'16'[2,2],
+               KNN_results$'18'[2,2],
+               KNN_results$'20'[2,2])
+
+
+Recall = c(KNN_results$'2'[1,2],
+            KNN_results$'4'[1,2],
+            KNN_results$'6'[1,2],
+            KNN_results$'8'[1,2],
+            KNN_results$'10'[1,2],
+            KNN_results$'12'[1,2],
+            KNN_results$'14'[1,2],
+            KNN_results$'16'[1,2],
+            KNN_results$'18'[1,2],
+            KNN_results$'20'[1,2])
+
+# Create a line plot
+plot(K, Accuracy, type = "b", pch = 16, col = "blue",
+     xlab = "K", ylab = "Metrics", main = "Performance Metrics" , ylim = c(0.7 , 0.98))
+lines(K, F1_Score, type = "b", pch = 16, col = "red")
+lines(K, Precision, type = "b", pch = 16, col = "green")
+lines(K, Recall, type = "b", pch = 16, col = "orange")
+
+# Add a legend
+legend("bottomright", legend = c("Accuracy", "F1 Score", "Precision", "Recall"),
+       col = c("blue", "red", "green", "orange"), lty = 1, pch = 16)
+```
+
+Below, you can see the value of metrics, the confusion matrix and the ROC curve.
+```{r}
+KNN_model = knn(train[, -1], test[, -1], train[, 1], k)
+KNN_probs = as.numeric(KNN_model == 1)
+KNN_results$'18'
+table(KNN_probs , test$diagnosis)
+```
+
+\vspace*{0.5cm}
+# 4 Conclusion
+check this grammatically
+Due to the plot below you can see that the Ridge regression model and the LDA model have the highest possible value for recall but the Ridge regression model has the higher value for the other metrics such as precision, F1-score, Accuracy, and AUC. So the preferred model among all the available models is the Ridge regression model.
+
+\vspace*{2.5cm}
+
+```{r}
+results = data.frame(
+  Model = c("Naive Bayes", "Logistic Regression", "Backward", "QDA", 
+            "KNN", "LASSO Regression", "LDA", "Ridge Regression"),
+  Recall = c(0.79, 0.81, 0.86,0.93,0.96,0.96,1,1),
+  Precision = c(0.81,0.78, 0.75,0.87,0.84,0.818,0.66, 0.818),
+  F1_Score = c(0.805,0.8, 0.806,0.90,0.903,0.88,0.8,0.9),
+  Accuracy = c(0.88,0.88, 0.89,0.94,0.94,0.93,0.902,0.946),
+  AUC = c(0.954,0.856, 0.854,0.973,0.918,0.903,0.975, 0.909)
+)
+
+# Reshape the data into long format
+results_long = reshape2::melt(results, id.vars = "Model", variable.name = "Metric")
+
+# Plot the results using a line plot
+ggplot(results_long, aes(x = Model, y = value, color = Metric, group = Metric)) +
+  geom_line() +
+  geom_point() +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
+  labs(y = "Value", x = "Model", color = "Metric") +
+  ggtitle("Comparison of Metrics") +
+  theme(plot.title = element_text(hjust = 0.5))
+```
+
+
