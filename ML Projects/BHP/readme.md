@@ -1,4 +1,4 @@
-<img width="940" alt="BHP" src="https://github.com/user-attachments/assets/29e89a12-a4f0-44bb-99a3-d3c0d72ab11c">
+<img width="940" alt="BHP" src="https://github.com/user-attachments/assets/47d6dd39-d3e0-412a-8f8f-873058da3e96">
 This data science project series walks through the step-by-step process of building a real estate price prediction website.
 
 First, we will build a model using sklearn and linear regression with the Bangalore home prices dataset from kaggle.com. The second step involves writing a Python Flask server that uses the saved model to serve HTTP requests. The third component is a website built with HTML, CSS, and JavaScript that allows users to enter home details such as square footage and the number of bedrooms, and then calls the Python Flask server to retrieve the predicted price.
